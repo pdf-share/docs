@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF URL Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #fafbfc;
+    --card: #ffffff;
+    --border: #e2e6ea;
+    --border-focus: #3b82f6;
+    --text-primary: #1a1d21;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --accent-light: #eff6ff;
+    --success: #10b981;
+    --success-light: #ecfdf5;
+    --danger: #ef4444;
+    --danger-light: #fef2f2;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 20px rgba(0,0,0,0.06);
+    --shadow-lg: 0 8px 40px rgba(0,0,0,0.08);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Setup Screen */
+  .setup-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #f0f4ff 0%, #fafbfc 50%, #f0fdf4 100%);
+  }
+
+  .setup-card {
+    max-width: 440px;
+    width: 100%;
+    background: var(--card);
+    border-radius: 20px;
+    padding: 44px 36px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(0,0,0,0.04);
+  }
+
+  .setup-header { text-align: center; margin-bottom: 36px; }
+
+  .setup-icon {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, var(--accent), #6366f1);
+    border-radius: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(59,130,246,0.25);
+  }
+
+  .setup-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .setup-header p { font-size: 14px; color: var(--text-secondary); margin-top: 6px; }
+
+  /* Form */
+  .field { margin-bottom: 18px; }
+  .field label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--text-secondary); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  .input {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 14px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--bg);
+  }
+  .input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    background: #fff;
+  }
+  .input::placeholder { color: var(--text-muted); }
+
+  .url-preview {
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 6px; font-family: 'JetBrains Mono', monospace;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 11px 20px; border: none; border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; text-decoration: none;
+  }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+  .btn-primary:disabled { background: #cbd5e1; cursor: default; transform: none; box-shadow: none; }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+  .btn-ghost { background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg); border-color: #ccc; }
+  .btn-copy { background: var(--bg); color: var(--text-secondary); border: 1.5px solid var(--border); font-size: 12px; padding: 6px 12px; white-space: nowrap; }
+  .btn-copy:hover { background: #eee; }
+  .btn-copy.copied { background: var(--success); color: #fff; border-color: var(--success); }
+
+  .error-box {
+    padding: 10px 14px;
+    background: var(--danger-light);
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-sm);
+    color: var(--danger);
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  /* Token Help */
+  .help-section {
+    margin-top: 24px; padding: 16px;
+    background: var(--bg); border-radius: var(--radius);
+  }
+  .help-toggle {
+    background: none; border: none; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    color: var(--accent); padding: 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .help-toggle:hover { text-decoration: underline; }
+  .help-steps {
+    margin-top: 12px; padding-left: 18px;
+    font-size: 12px; color: var(--text-secondary);
+    line-height: 2;
+  }
+  .help-steps strong { color: var(--text-primary); }
+
+  /* Main Screen */
+  .container { max-width: 700px; margin: 0 auto; padding: 28px 20px; }
+
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 28px;
+  }
+  .header h1 { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; letter-spacing: -0.3px; }
+  .header-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--text-muted);
+    background: var(--bg); padding: 3px 8px;
+    border-radius: 6px; border: 1px solid var(--border);
+    margin-top: 4px; display: inline-block;
+  }
+
+  /* Dropzone */
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: var(--card);
+    margin-bottom: 20px;
+  }
+  .dropzone:hover, .dropzone.active {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .dropzone-icon { font-size: 40px; margin-bottom: 8px; opacity: 0.9; }
+  .dropzone h3 { font-size: 15px; font-weight: 600; }
+  .dropzone p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Cards */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(0,0,0,0.03);
+  }
+  .card-title {
+    font-size: 13px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  /* File Row */
+  .file-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0;
+  }
+  .file-row + .file-row { border-top: 1px solid #f3f4f6; }
+  .file-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .file-badge {
+    font-size: 10px; font-weight: 700;
+    padding: 2px 7px; border-radius: 5px;
+    flex-shrink: 0; letter-spacing: 0.5px;
+  }
+  .file-badge-pdf { background: var(--danger-light); color: var(--danger); }
+  .file-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-size { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+
+  .url-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .url-input {
+    flex: 1; padding: 6px 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; color: var(--accent);
+    background: var(--bg); outline: none;
+  }
+  .url-input:focus { border-color: var(--accent); }
+
+  .result-success { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .result-check { color: var(--success); font-weight: 700; }
+  .result-note { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  .btn-icon {
+    background: none; border: none; cursor: pointer;
+    font-size: 16px; color: var(--text-muted);
+    padding: 4px; border-radius: 6px; transition: all 0.2s;
+  }
+  .btn-icon:hover { background: var(--danger-light); color: var(--danger); }
+
+  .empty { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; }
+
+  .refresh-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 12px; color: var(--accent); font-family: inherit;
+  }
+  .refresh-btn:hover { text-decoration: underline; }
+
+  @media (max-width: 480px) {
+    .setup-card { padding: 28px 20px; }
+    .container { padding: 16px 12px; }
+    .dropzone { padding: 28px 16px; }
+    .url-row { flex-direction: column; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const app = document.getElementById('app');
+// Load saved config from localStorage
+const saved = (() => {
+  try {
+    const s = localStorage.getItem('pdf-uploader-config');
+    return s ? JSON.parse(s) : null;
+  } catch(e) { return null; }
+})();
+
+let state = {
+  configured: false,
+  config: saved || { token: '', username: '', repo: 'PDFUPLOAD' },
+  remember: !!saved,
+  files: [],
+  uploading: false,
+  uploadResult: null,
+  error: null,
+  repoFiles: [],
+  loadingFiles: false,
+  dragOver: false,
+  copiedUrl: null,
+  showSetup: false,
+  uploadProgress: { current: 0, total: 0 }
+};
+
+function setState(updates) {
+  Object.assign(state, updates);
+  render();
+}
+
+function getBaseUrl() {
+  return `https://${state.config.username}.github.io/${state.config.repo}`;
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+async function copyUrl(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+  } catch(e) {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  setState({ copiedUrl: url });
+  setTimeout(() => setState({ copiedUrl: null }), 2000);
+}
+
+async function fetchRepoFiles() {
+  const { token, username, repo } = state.config;
+  if (!token || !username || !repo) return;
+  setState({ loadingFiles: true });
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${username}/${repo}/contents/`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const pdfs = data.filter(f => f.name.toLowerCase().endsWith('.pdf'));
+      setState({ repoFiles: pdfs, loadingFiles: false });
+    } else {
+      setState({ repoFiles: [], loadingFiles: false });
+    }
+  } catch(e) {
+    setState({ loadingFiles: false });
+  }
+}
+
+async function handleConnect() {
+  setState({ error: null });
+  const { token, username, repo } = state.config;
+
+  try {
+    const userRes = await fetch('https://api.github.com/user', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!userRes.ok) {
+      setState({ error: 'トークンが無効です。正しいPersonal Access Tokenを入力してください。' });
+      return;
+    }
+
+    const repoRes = await fetch(
+      `https://api.github.com/repos/${username}/${repo}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    if (!repoRes.ok) {
+      const createRes = await fetch('https://api.github.com/user/repos', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: repo, public: true, auto_init: true })
+      });
+      if (!createRes.ok) {
+        setState({ error: 'リポジトリの作成に失敗しました。' });
+        return;
+      }
+      await new Promise(r => setTimeout(r, 2000));
+      await fetch(`https://api.github.com/repos/${username}/${repo}/pages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: { branch: 'main', path: '/' } })
+      });
+    } else {
+      try {
+        await fetch(`https://api.github.com/repos/${username}/${repo}/pages`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source: { branch: 'main', path: '/' } })
+        });
+      } catch(e) {}
+    }
+
+    setState({ configured: true });
+
+    // Save to localStorage if remember is checked
+    if (state.remember) {
+      localStorage.setItem('pdf-uploader-config', JSON.stringify(state.config));
+    }
+
+    fetchRepoFiles();
+  } catch(e) {
+    setState({ error: '接続に失敗しました。ネットワークを確認してください。' });
+  }
+}
+
+function handleFileSelect(e) {
+  const selected = Array.from(e.target.files).filter(f => f.type === 'application/pdf');
+  setState({ files: [...state.files, ...selected], uploadResult: null });
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  const dropped = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+  setState({ files: [...state.files, ...dropped], dragOver: false, uploadResult: null });
+}
+
+function removeFile(index) {
+  setState({ files: state.files.filter((_, i) => i !== index) });
+}
+
+async function uploadFiles() {
+  setState({ uploading: true, error: null, uploadResult: null, uploadProgress: { current: 0, total: state.files.length } });
+  const { token, username, repo } = state.config;
+  const results = [];
+
+  for (let i = 0; i < state.files.length; i++) {
+    const file = state.files[i];
+    setState({ uploadProgress: { current: i + 1, total: state.files.length } });
+
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      let sha;
+      try {
+        const existCheck = await fetch(
+          `https://api.github.com/repos/${username}/${repo}/contents/${file.name}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (existCheck.ok) {
+          const existData = await existCheck.json();
+          sha = existData.sha;
+        }
+      } catch(e) {}
+
+      const body = { message: `Upload ${file.name}`, content: base64 };
+      if (sha) body.sha = sha;
+
+      const res = await fetch(
+        `https://api.github.com/repos/${username}/${repo}/contents/${file.name}`,
+        {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }
+      );
+
+      if (res.ok) {
+        results.push({ name: file.name, url: `${getBaseUrl()}/${file.name}`, success: true });
+      } else {
+        const errData = await res.json();
+        results.push({ name: file.name, error: errData.message, success: false });
+      }
+    } catch(e) {
+      results.push({ name: file.name, error: e.message, success: false });
+    }
+  }
+
+  setState({ uploadResult: results, files: [], uploading: false });
+  fetchRepoFiles();
+}
+
+async function deleteFile(fileName, sha) {
+  if (!confirm(`「${fileName}」を削除しますか？`)) return;
+  const { token, username, repo } = state.config;
+  try {
+    await fetch(
+      `https://api.github.com/repos/${username}/${repo}/contents/${fileName}`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `Delete ${fileName}`, sha })
+      }
+    );
+    fetchRepoFiles();
+  } catch(e) {
+    setState({ error: '削除に失敗しました。' });
+  }
+}
+
+function render() {
+  if (!state.configured) {
+    renderSetup();
+  } else {
+    renderMain();
+  }
+}
+
+function renderSetup() {
+  const { config, error, showSetup } = state;
+  app.innerHTML = `
+    <div class="setup-screen">
+      <div class="setup-card">
+        <div class="setup-header">
+          <div class="setup-icon">📄</div>
+          <h1>PDF URL Generator</h1>
+          <p>PDFをアップロードして共有URLを発行</p>
+        </div>
+
+        <div class="field">
+          <label>GitHub Username</label>
+          <input class="input" type="text" id="input-username" value="${config.username}" placeholder="your-username">
+        </div>
+
+        <div class="field">
+          <label>Personal Access Token</label>
+          <input class="input" type="password" id="input-token" value="${config.token}" placeholder="ghp_xxxxxxxxxxxx">
+        </div>
+
+        <div class="field">
+          <label>Repository Name</label>
+          <input class="input" type="text" id="input-repo" value="${config.repo}" placeholder="docs">
+          <div class="url-preview">URL: https://${config.username || 'username'}.github.io/${config.repo || 'docs'}/</div>
+        </div>
+
+        ${error ? `<div class="error-box">${error}</div>` : ''}
+
+        <div style="margin-bottom: 18px; display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="input-remember" ${state.remember ? 'checked' : ''} style="width:16px; height:16px; cursor:pointer;">
+          <label for="input-remember" style="font-size:13px; color:#555; cursor:pointer; text-transform:none; letter-spacing:0;">次回から自動ログイン</label>
+        </div>
+
+        <button class="btn btn-primary" id="btn-connect" ${(!config.token || !config.username || !config.repo) ? 'disabled' : ''}>
+          接続する
+        </button>
+
+        <div class="help-section">
+          <button class="help-toggle" id="btn-help">
+            ${showSetup ? '▼' : '▶'} Personal Access Token の取得方法
+          </button>
+          ${showSetup ? `
+            <ol class="help-steps">
+              <li>GitHubにログイン</li>
+              <li>右上アイコン → <strong>Settings</strong></li>
+              <li>左メニュー最下部 → <strong>Developer settings</strong></li>
+              <li><strong>Personal access tokens</strong> → <strong>Tokens (classic)</strong></li>
+              <li><strong>Generate new token (classic)</strong></li>
+              <li>Note に「PDF Uploader」と入力</li>
+              <li>Expiration を設定（90 days推奨）</li>
+              <li>Scopes で <strong>repo</strong> にチェック</li>
+              <li>Generate token → トークンをコピー</li>
+            </ol>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('input-username').addEventListener('input', e => {
+    state.config.username = e.target.value;
+    render();
+  });
+  document.getElementById('input-token').addEventListener('input', e => {
+    state.config.token = e.target.value;
+    render();
+  });
+  document.getElementById('input-repo').addEventListener('input', e => {
+    state.config.repo = e.target.value;
+    render();
+  });
+  document.getElementById('btn-connect').addEventListener('click', handleConnect);
+  document.getElementById('input-remember').addEventListener('change', e => {
+    state.remember = e.target.checked;
+  });
+  document.getElementById('btn-help').addEventListener('click', () => {
+    setState({ showSetup: !state.showSetup });
+  });
+}
+
+function renderMain() {
+  const { files, uploading, uploadResult, error, repoFiles, loadingFiles, copiedUrl, uploadProgress } = state;
+  const baseUrl = getBaseUrl();
+
+  let filesHtml = '';
+  files.forEach((f, i) => {
+    filesHtml += `
+      <div class="file-row">
+        <div class="file-info">
+          <span class="file-badge file-badge-pdf">PDF</span>
+          <span class="file-name">${f.name}</span>
+          <span class="file-size">${formatSize(f.size)}</span>
+        </div>
+        <button class="btn-icon" data-remove="${i}">✕</button>
+      </div>
+    `;
+  });
+
+  let resultsHtml = '';
+  if (uploadResult) {
+    uploadResult.forEach(r => {
+      if (r.success) {
+        resultsHtml += `
+          <div style="padding:10px 0; border-bottom: 1px solid #f3f4f6;">
+            <div class="result-success">
+              <span class="result-check">✓</span>
+              <span class="file-name" style="font-weight:600">${r.name}</span>
+            </div>
+            <div class="url-row">
+              <input class="url-input" type="text" value="${r.url}" readonly onclick="this.select()">
+              <button class="btn btn-copy ${copiedUrl === r.url ? 'copied' : ''}" data-copy="${r.url}">
+                ${copiedUrl === r.url ? '✓ コピー済' : 'コピー'}
+              </button>
+            </div>
+            <div class="result-note">※ 反映まで1〜2分かかる場合があります</div>
+          </div>
+        `;
+      } else {
+        resultsHtml += `
+          <div style="padding:10px 0; border-bottom: 1px solid #f3f4f6;">
+            <span style="color:var(--danger)">✕</span> ${r.name}: ${r.error}
+          </div>
+        `;
+      }
+    });
+  }
+
+  let repoFilesHtml = '';
+  if (repoFiles.length === 0) {
+    repoFilesHtml = `<div class="empty">${loadingFiles ? '読み込み中...' : 'PDFファイルがありません'}</div>`;
+  } else {
+    repoFiles.forEach(f => {
+      const url = `${baseUrl}/${f.name}`;
+      repoFilesHtml += `
+        <div class="file-row">
+          <div style="flex:1; min-width:0;">
+            <div class="file-info" style="margin-bottom:6px">
+              <span class="file-badge file-badge-pdf">PDF</span>
+              <span class="file-name">${f.name}</span>
+              <span class="file-size">${formatSize(f.size)}</span>
+            </div>
+            <div class="url-row">
+              <input class="url-input" type="text" value="${url}" readonly onclick="this.select()">
+              <button class="btn btn-copy ${copiedUrl === url ? 'copied' : ''}" data-copy="${url}">
+                ${copiedUrl === url ? '✓' : 'コピー'}
+              </button>
+            </div>
+          </div>
+          <button class="btn-icon" data-delete="${f.name}" data-sha="${f.sha}" style="margin-left:8px" title="削除">🗑</button>
+        </div>
+      `;
+    });
+  }
+
+  app.innerHTML = `
+    <div class="container">
+      <div class="header">
+        <div>
+          <h1>📄 PDF URL Generator</h1>
+          <div class="header-badge">${state.config.username}/${state.config.repo}</div>
+        </div>
+        <button class="btn btn-sm btn-ghost" id="btn-settings">設定変更</button>
+      </div>
+
+      <div class="dropzone ${state.dragOver ? 'active' : ''}" id="dropzone">
+        <div class="dropzone-icon">⬆️</div>
+        <h3>PDFをドラッグ＆ドロップ</h3>
+        <p>またはクリックしてファイルを選択</p>
+        <input type="file" id="file-input" accept=".pdf" multiple style="display:none">
+      </div>
+
+      ${files.length > 0 ? `
+        <div class="card">
+          <div class="card-title">アップロードするファイル (${files.length})</div>
+          ${filesHtml}
+          <button class="btn btn-primary" id="btn-upload" ${uploading ? 'disabled' : ''} style="margin-top:14px">
+            ${uploading ? `アップロード中... (${uploadProgress.current}/${uploadProgress.total})` : `${files.length}件をアップロード`}
+          </button>
+        </div>
+      ` : ''}
+
+      ${uploadResult ? `
+        <div class="card">
+          <div class="card-title">アップロード結果</div>
+          ${resultsHtml}
+        </div>
+      ` : ''}
+
+      ${error ? `<div class="error-box">${error}</div>` : ''}
+
+      <div class="card">
+        <div class="card-title">
+          アップロード済み PDF
+          <button class="refresh-btn" id="btn-refresh">${loadingFiles ? '読込中...' : '↻ 更新'}</button>
+        </div>
+        ${repoFilesHtml}
+      </div>
+    </div>
+  `;
+
+  // Event listeners
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    localStorage.removeItem('pdf-uploader-config');
+    setState({ configured: false, error: null, remember: false });
+  });
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); setState({ dragOver: true }); });
+  dropzone.addEventListener('dragleave', () => setState({ dragOver: false }));
+  dropzone.addEventListener('drop', handleDrop);
+  fileInput.addEventListener('change', handleFileSelect);
+
+  const uploadBtn = document.getElementById('btn-upload');
+  if (uploadBtn) uploadBtn.addEventListener('click', uploadFiles);
+
+  document.getElementById('btn-refresh').addEventListener('click', fetchRepoFiles);
+
+  document.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => removeFile(parseInt(btn.dataset.remove)));
+  });
+
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', () => copyUrl(btn.dataset.copy));
+  });
+
+  document.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', () => deleteFile(btn.dataset.delete, btn.dataset.sha));
+  });
+}
+
+// Initial render
+render();
+
+// Auto-connect if saved config exists
+if (saved && saved.token && saved.username && saved.repo) {
+  handleConnect();
+}
+</script>
+</body>
+</html>
