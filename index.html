@@ -301,6 +301,15 @@ function formatSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
+function generateRandomName(length = 8) {
+  const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result + '.pdf';
+}
+
 async function copyUrl(url) {
   try {
     await navigator.clipboard.writeText(url);
@@ -416,6 +425,7 @@ async function uploadFiles() {
 
   for (let i = 0; i < state.files.length; i++) {
     const file = state.files[i];
+    const randomName = generateRandomName();
     setState({ uploadProgress: { current: i + 1, total: state.files.length } });
 
     try {
@@ -429,7 +439,7 @@ async function uploadFiles() {
       let sha;
       try {
         const existCheck = await fetch(
-          `https://api.github.com/repos/${username}/${repo}/contents/${file.name}`,
+          `https://api.github.com/repos/${username}/${repo}/contents/${randomName}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (existCheck.ok) {
@@ -438,11 +448,11 @@ async function uploadFiles() {
         }
       } catch(e) {}
 
-      const body = { message: `Upload ${file.name}`, content: base64 };
+      const body = { message: `Upload ${randomName} (${file.name})`, content: base64 };
       if (sha) body.sha = sha;
 
       const res = await fetch(
-        `https://api.github.com/repos/${username}/${repo}/contents/${file.name}`,
+        `https://api.github.com/repos/${username}/${repo}/contents/${randomName}`,
         {
           method: 'PUT',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -451,7 +461,7 @@ async function uploadFiles() {
       );
 
       if (res.ok) {
-        results.push({ name: file.name, url: `${getBaseUrl()}/${file.name}`, success: true });
+        results.push({ name: file.name, uploadedName: randomName, url: `${getBaseUrl()}/${randomName}`, success: true });
       } else {
         const errData = await res.json();
         results.push({ name: file.name, error: errData.message, success: false });
@@ -599,6 +609,7 @@ function renderMain() {
             <div class="result-success">
               <span class="result-check">✓</span>
               <span class="file-name" style="font-weight:600">${r.name}</span>
+              <span style="font-size:11px; color:var(--text-muted)">→ ${r.uploadedName}</span>
             </div>
             <div class="url-row">
               <input class="url-input" type="text" value="${r.url}" readonly onclick="this.select()">
@@ -656,7 +667,7 @@ function renderMain() {
         <button class="btn btn-sm btn-ghost" id="btn-settings">設定変更</button>
       </div>
 
-      <div class="dropzone ${state.dragOver ? 'active' : ''}" id="dropzone">
+      <div class="dropzone" id="dropzone">
         <div class="dropzone-icon">⬆️</div>
         <h3>PDFをドラッグ＆ドロップ</h3>
         <p>またはクリックしてファイルを選択</p>
@@ -702,9 +713,6 @@ function renderMain() {
   const fileInput = document.getElementById('file-input');
 
   dropzone.addEventListener('click', () => fileInput.click());
-  dropzone.addEventListener('dragover', e => { e.preventDefault(); setState({ dragOver: true }); });
-  dropzone.addEventListener('dragleave', () => setState({ dragOver: false }));
-  dropzone.addEventListener('drop', handleDrop);
   fileInput.addEventListener('change', handleFileSelect);
 
   const uploadBtn = document.getElementById('btn-upload');
@@ -727,6 +735,35 @@ function renderMain() {
 
 // Initial render
 render();
+
+// Global drag and drop handling (event delegation - survives re-renders)
+// Prevent browser from opening files dropped anywhere on the page
+document.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  const dropzone = document.getElementById('dropzone');
+  if (dropzone && dropzone.contains(e.target)) {
+    dropzone.classList.add('active');
+  }
+});
+
+document.addEventListener('dragleave', function(e) {
+  const dropzone = document.getElementById('dropzone');
+  if (dropzone && !dropzone.contains(e.relatedTarget)) {
+    dropzone.classList.remove('active');
+  }
+});
+
+document.addEventListener('drop', function(e) {
+  e.preventDefault();
+  const dropzone = document.getElementById('dropzone');
+  if (dropzone && dropzone.contains(e.target)) {
+    dropzone.classList.remove('active');
+    const dropped = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+    if (dropped.length > 0) {
+      setState({ files: [...state.files, ...dropped], uploadResult: null });
+    }
+  }
+});
 
 // Auto-connect if saved config exists
 if (saved && saved.token && saved.username && saved.repo) {
